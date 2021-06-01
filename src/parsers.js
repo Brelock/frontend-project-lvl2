@@ -1,43 +1,20 @@
 import yaml from 'js-yaml';
-import ini from 'ini';
-import { isObject, isBoolean, keys } from 'lodash';
 
-const myIniParse = (data) => {
-  const parseFile = ini.parse(data);
+const parseJSON = (data) => JSON.parse(data);
 
-  const normalize = (config) => {
-    const configKeys = keys(config);
-    const result = configKeys.reduce((acc, key) => {
-      if (isObject(config[key])) {
-        return { ...acc, [key]: normalize(config[key]) };
-      }
-      if (isBoolean(config[key])) {
-        return { ...acc, [key]: config[key] };
-      }
-      if (Number.isNaN(Number(config[key]))) {
-        return { ...acc, [key]: config[key] };
-      }
-      return { ...acc, [key]: Number(config[key]) };
-    }, {});
-    return result;
-  };
+const parseYAML = (data) => yaml.load(data);
 
-  return normalize(parseFile);
-};
-
-export const parse = (type, data) => {
-  switch (type) {
+const parseFile = (fileData, fileExtension) => {
+  switch (fileExtension) {
     case 'json':
-      return JSON.parse(data);
-    case 'yaml':
-      return yaml.safeLoad(data);
+      return parseJSON(fileData);
+
     case 'yml':
-      return yaml.safeLoad(data);
-    case 'ini':
-      return myIniParse(data);
+      return parseYAML(fileData);
+
     default:
-      throw new Error(`Unknown data type! ${type} is not supported!`);
+      throw new Error(`Unexpected file extension: ${fileExtension}.`);
   }
 };
 
-export default parse;
+export default parseFile;

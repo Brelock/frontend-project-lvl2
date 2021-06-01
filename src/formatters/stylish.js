@@ -1,37 +1,80 @@
-import { isObject } from 'lodash';
+import _ from 'lodash';
+import nodeTypes from '../consts.js';
 
-const tab = (level) => '    '.repeat(level);
+const spacesCount = 4;
+const placeholder = ' ';
 
-const stringify = (value, lvl) => {
-  if (!isObject(value)) {
+const getNodeSymbol = (type) => {
+  switch (type) {
+    case nodeTypes.added:
+      return '+';
+
+    case nodeTypes.removed:
+      return '-';
+
+    default:
+      return placeholder;
+  }
+};
+
+const createPrefix = (depth) => {
+  const reservedSpaceForSymbol = 2;
+  return placeholder.repeat((spacesCount * depth) - reservedSpaceForSymbol);
+};
+
+const formatNodeValue = (value, depth) => {
+  if (!_.isObject(value)) {
     return value;
   }
-  const keys = Object.keys(value);
-  const result = keys.map((key) => (`{\n${tab(lvl + 2)}${key}: ${stringify(value[key])}\n${tab(lvl + 1)}}`));
-  return result;
+
+  const prefix = createPrefix(depth);
+
+  const body = Object
+    .keys(value)
+    .map((key) => `${prefix}${placeholder} ${key}: ${formatNodeValue(value[key], depth + 1)}`)
+    .join('\n');
+
+  return `{\n${body}\n${createPrefix(depth - 1)}  }`;
 };
 
-const buildTreeFormat = (tree, level = 0) => {
-  const result = tree.flatMap((node) => {
-    switch (node.status) {
-      case 'unmodified':
-        return `    ${tab(level)}${node.key}: ${stringify(node.value, level)}`;
-      case 'modified':
-        return [
-          `  ${tab(level)}- ${node.key}: ${stringify(node.oldValue, level)}`,
-          `  ${tab(level)}+ ${node.key}: ${stringify(node.newValue, level)}`,
-        ];
-      case 'added':
-        return `  ${tab(level)}+ ${node.key}: ${stringify(node.value, level)}`;
-      case 'deleted':
-        return `  ${tab(level)}- ${node.key}: ${stringify(node.value, level)}`;
-      case 'merged':
-        return `${tab(level + 1)}${node.key}: {\n${buildTreeFormat(node.children, level + 1)}\n${tab(level + 1)}}`;
-      default:
-        throw new Error(`Unknown node status! ${node.status} is wrong!`);
+const getStylishLine = (node, depth) => {
+  const {
+    key, type, prevValue, nextValue, children,
+  } = node;
+  const prefix = createPrefix(depth);
+  const symbol = getNodeSymbol(type);
+
+  switch (type) {
+    case nodeTypes.added:
+    case nodeTypes.removed:
+    case nodeTypes.unchanged:
+      return `${prefix}${symbol} ${key}: ${formatNodeValue(prevValue, depth + 1)}`;
+
+    case nodeTypes.changed: {
+      const symbolRemove = getNodeSymbol(nodeTypes.removed);
+      const symbolAdded = getNodeSymbol(nodeTypes.added);
+
+      return [
+        `${prefix}${symbolRemove} ${key}: ${formatNodeValue(prevValue, depth + 1)}`,
+        `${prefix}${symbolAdded} ${key}: ${formatNodeValue(nextValue, depth + 1)}`,
+      ].join('\n');
     }
-  });
-  return result.join('\n');
+    case nodeTypes.nested: {
+      const formattedSubNodes = children
+        .map((subNode) => getStylishLine(subNode, depth + 1))
+        .join('\n');
+
+      return `${prefix}${symbol} ${key}: {\n${formattedSubNodes}\n${createPrefix(depth)}  }`;
+    }
+    default:
+      throw new Error(`Unexpected node type: ${type}.`);
+  }
 };
 
-export default (tree) => `{\n${buildTreeFormat(tree)}\n}`;
+const formatStylish = (diff) => {
+  const lines = diff.map((node) => getStylishLine(node, 1));
+
+  return ['{', ...lines, '}'];
+};
+
+export default (diff) => formatStylish(diff).join('\n');

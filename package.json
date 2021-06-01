@@ -1,51 +1,50 @@
 {
   "name": "@hexlet/code",
   "version": "1.0.0",
-  "description": "[![Actions Status](https://github.com/Brelock/frontend-project-lvl2/workflows/hexlet-check/badge.svg)](https://github.com/Brelock/frontend-project-lvl2/actions)",
+  "description": "second hexlet frontend project",
   "main": "index.js",
-  "bin": {
-    "gendiff": "dist/bin/gendiff.js"
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "test": "jest",
-    "build": "NODE_ENV=production babel src --out-dir dist --source-maps inline",
-    "prepublishOnly": "npm run build"
+    "test": "npx jest"
+  },
+  "type": "module",
+  "engines": {
+    "node": "=14",
+    "npm": "=6"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "transform": {}
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Brelock/frontend-project-lvl2.git"
   },
-  "keywords": [
-    "khloptsev",
-    "khloptsevps",
-    "hangryrabbit",
-    "hangry_rabbit",
-    "hr"
-  ],
-  "author": "khlotsevps",
+  "author": "Brelock",
   "license": "ISC",
+  "bin": {
+    "gendiff": "bin/gendiff.js"
+  },
   "bugs": {
     "url": "https://github.com/Brelock/frontend-project-lvl2/issues"
   },
+  "homepage": "https://github.com/Brelock/frontend-project-lvl2#readme",
   "devDependencies": {
-    "@babel/cli": "^7.8.4",
-    "@babel/core": "^7.9.0",
-    "@babel/node": "^7.8.7",
-    "@babel/preset-env": "^7.9.0",
-    "@types/jest": "^25.1.5",
-    "babel-jest": "^25.2.6",
-    "eslint": "^6.8.0",
-    "eslint-config-airbnb-base": "^14.1.0",
-    "eslint-plugin-import": "^2.20.2",
-    "jest": "^25.2.6"
+    "eslint": "^7.17.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jest": "^24.1.3",
+    "husky": "^4.3.8",
+    "jest": "^26.6.3"
   },
   "dependencies": {
-    "commander": "^5.0.0",
-    "ini": "^1.3.5",
-    "js-yaml": "^3.13.1",
-    "lodash": "^4.17.15"
+    "commander": "^7.0.0",
+    "js-yaml": "^4.0.0",
+    "lodash": "^4.17.20"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "make lint",
+      "pre-push": "make lint"
+    }
   }
 }

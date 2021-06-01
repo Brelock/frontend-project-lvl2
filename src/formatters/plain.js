@@ -1,38 +1,48 @@
-import { isObject, trim } from 'lodash';
+import _ from 'lodash';
+import nodeTypes from '../consts.js';
 
-const checkValue = (value) => {
-  if (isObject(value)) {
+const formatNodeValue = (value) => {
+  if (_.isObject(value)) {
     return '[complex value]';
   }
-  if (Number.isNaN(Number(value))) {
+
+  if (_.isString(value)) {
     return `'${value}'`;
   }
+
   return value;
 };
 
-const plain = (tree) => {
-  const iter = (node, path) => {
-    const result = node
-      .filter((nnode) => nnode.status !== 'unmodified')
-      .map((n) => {
-        const newProperty = trim(`${path}.${n.key}`, '.');
-        switch (n.status) {
-          case 'modified':
-            return `Property '${newProperty}' was changed from ${checkValue(n.oldValue)} to ${checkValue(n.newValue)}`;
-          case 'added':
-            return `Property '${newProperty}' was added with value: ${checkValue(n.value)}`;
-          case 'deleted':
-            return `Property '${newProperty}' was deleted`;
-          case 'merged':
-            return iter(n.children, newProperty);
-          default:
-            throw new Error(`Unknown node status! ${node.status} is wrong!`);
-        }
-      });
-    return result.join('\n');
-  };
-  return iter(tree, '');
+const getPlainLine = (node, path) => {
+  const {
+    key, type, prevValue, nextValue, children,
+  } = node;
+  const currentPath = [...path, key].join('.');
+
+  switch (type) {
+    case nodeTypes.added:
+      return `Property '${currentPath}' was added with value: ${formatNodeValue(prevValue)}`;
+
+    case nodeTypes.removed:
+      return `Property '${currentPath}' was removed`;
+
+    case nodeTypes.changed:
+      return `Property '${currentPath}' was updated. From ${formatNodeValue(prevValue)} to ${formatNodeValue(nextValue)}`;
+
+    case nodeTypes.nested:
+      return children
+        .flatMap((child) => getPlainLine(child, [...path, key]));
+
+    case nodeTypes.unchanged:
+      return '';
+
+    default:
+      throw new Error(`Unexpected node type: ${type}.`);
+  }
 };
 
+const formatPlain = (diff) => diff
+  .flatMap((node) => getPlainLine(node, []))
+  .filter((node) => node);
 
-export default plain;
+export default (diff) => formatPlain(diff).join('\n');

@@ -1,29 +1,54 @@
-import path from 'path';
-import fs from 'fs';
-import genDiff from '../src/index.js';
+import { readFile, createPath } from '../src/utils/file.js';
+import genDiff from '../index.js';
 
-const extention = ['json', 'yml', 'ini'];
+const getFixturePath = (filepath) => createPath(['__fixtures__', filepath]);
 
-describe('gendiff', () => {
-  const recurciveResult = fs.readFileSync(path.resolve(__dirname, './fixtures/result.diff'), 'utf8');
-  const plainResult = fs.readFileSync(path.resolve(__dirname, './fixtures/plain.diff'), 'utf8');
-  const jsonResult = fs.readFileSync(path.resolve(__dirname, './fixtures/json.diff'), 'utf8');
+const jsonFilePath1 = getFixturePath('file1.json');
+const jsonFilePath2 = getFixturePath('file2.json');
 
-  describe.each(extention)('compare two %s files', (ext) => {
-    const before = path.resolve(__dirname, `./fixtures/before.${ext}`);
-    const after = path.resolve(__dirname, `./fixtures/after.${ext}`);
-    const expected = genDiff(before, after);
+const supportedExtensions = ['json', 'yml'];
+const supportedFormats = ['stylish', 'plain', 'json'];
 
-    test('stylish', () => {
-      expect(expected).toEqual(recurciveResult);
-    });
+const getCombinations = (formats, extensions) => {
+  const extensionCombinations = extensions
+    .flatMap((extension1) => extensions.map((extension2) => [extension1, extension2]));
 
-    test('plain', () => {
-      expect(genDiff(before, after, 'plain')).toEqual(plainResult);
-    });
+  return extensionCombinations
+    .flatMap((extensionCombo) => formats.map((format) => [...extensionCombo, format]));
+};
 
-    test('tree', () => {
-      expect(genDiff(before, after, 'json')).toEqual(jsonResult);
-    });
+const combinations = getCombinations(supportedFormats, supportedExtensions);
+
+const expectedDiffs = new Map();
+
+beforeAll(() => {
+  supportedFormats.forEach((format) => {
+    expectedDiffs.set(format, readFile(getFixturePath(`${format}Diff.txt`)));
   });
 });
+
+test('json-formatter output is valid json', () => {
+  const jsonDiff = genDiff(jsonFilePath1, jsonFilePath2, 'json');
+  const parseJSON = () => JSON.parse(jsonDiff);
+
+  expect(parseJSON).not.toThrow();
+});
+
+test('check genDiff with default formatter', () => {
+  const stylishDiff = genDiff(jsonFilePath1, jsonFilePath2);
+
+  expect(expectedDiffs.get('stylish')).toStrictEqual(stylishDiff);
+});
+
+test.each(combinations)(
+  'diff (.%s .%s)-files formatted as %s',
+  (extension1, extension2, format) => {
+    const filePath1 = getFixturePath(`file1.${extension1}`);
+    const filePath2 = getFixturePath(`file2.${extension2}`);
+
+    const receivedDiff = genDiff(filePath1, filePath2, format);
+    const expectedDiff = expectedDiffs.get(format);
+
+    expect(receivedDiff).toStrictEqual(expectedDiff);
+  },
+);
